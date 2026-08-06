@@ -32,7 +32,7 @@ async def on_member_join(member):
         member_count = member.guild.member_count
 
         await channel.send(
-            f"👋 Hi {member.mention}, welcome to **Los Angeles State RolePlay**!\n\n"
+            f"👋 Hi {member.mention}, welcome to **One More Day**!\n\n"
             f"You are our **{ordinal(member_count)}** member. 🎉"
         )
 
