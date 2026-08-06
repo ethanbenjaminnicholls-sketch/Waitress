@@ -40,7 +40,8 @@ intents.guilds = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-WELCOME_CHANNEL_ID = 1534907292720435401
+WELCOME_CHANNEL_ID = None
+
 
 
 # ==============================
@@ -54,23 +55,14 @@ def ordinal(n):
 
 
 async def send_welcome(member):
-    guild = member.guild
-
-    channel = guild.get_channel(WELCOME_CHANNEL_ID)
+    channel = member.guild.system_channel
 
     if channel is None:
-        try:
-            channel = await guild.fetch_channel(WELCOME_CHANNEL_ID)
-        except Exception:
-            channel = guild.system_channel
-
-    if channel is None:
-        print("❌ No valid welcome channel found.")
-        return
+        channel = member.guild.text_channels[0]
 
     await channel.send(
-        f"👋 Welcome {member.mention} to **One More Day**!\n\n"
-        f"You are our **{ordinal(guild.member_count)}** member! 🎉"
+        f"👋 Welcome {member.mention}!\n"
+        f"You are our **{ordinal(member.guild.member_count)}** member! 🎉"
     )
 
 
