@@ -1,115 +1,147 @@
-import discord
-import asyncio
 import os
 import threading
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import BaseHTTPRequestHandler, HTTPServer
+
+import discord
 from discord.ext import commands
 
-# ── Keep-alive server ──────────────────────────────────────────────────────
+# ==============================
+# Keep Alive Server
+# ==============================
+
 class KeepAliveHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
         self.end_headers()
         self.wfile.write(b"Bot is alive!")
-    def log_message(self, format, *args):
-        pass
 
-def start_keep_alive():
-    port = int(os.environ.get("PORT", 3000))
+    def log_message(self, format, *args):
+        return
+
+
+def keep_alive():
+    port = int(os.getenv("PORT", 3000))
     server = HTTPServer(("0.0.0.0", port), KeepAliveHandler)
-    print(f"[Keep-Alive] Running on port {port}")
+
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
 
-# ── Bot setup ──────────────────────────────────────────────────────────────
+    print(f"✅ Keep-alive running on port {port}")
+
+
+# ==============================
+# Bot Setup
+# ==============================
+
 intents = discord.Intents.default()
 intents.members = True
 intents.message_content = True
+intents.guilds = True
 
-client = commands.Bot(command_prefix="!", intents=intents)
+bot = commands.Bot(command_prefix="!", intents=intents)
 
 WELCOME_CHANNEL_ID = 1534907292720435401
 
+
+# ==============================
+# Helper
+# ==============================
+
 def ordinal(n):
-    if 10 <= n % 100 <= 20:
-        suffix = "th"
-    else:
-        suffix = {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
-    return f"{n}{suffix}"
+    if 10 <= (n % 100) <= 20:
+        return f"{n}th"
+    return f"{n}{ {1:'st',2:'nd',3:'rd'}.get(n % 10,'th') }"
 
-# ── on_ready ───────────────────────────────────────────────────────────────
-@client.event
+
+async def send_welcome(member):
+    guild = member.guild
+
+    channel = guild.get_channel(WELCOME_CHANNEL_ID)
+
+    if channel is None:
+        try:
+            channel = await guild.fetch_channel(WELCOME_CHANNEL_ID)
+        except Exception:
+            channel = guild.system_channel
+
+    if channel is None:
+        print("❌ No valid welcome channel found.")
+        return
+
+    await channel.send(
+        f"👋 Welcome {member.mention} to **One More Day**!\n\n"
+        f"You are our **{ordinal(guild.member_count)}** member! 🎉"
+    )
+
+
+# ==============================
+# Events
+# ==============================
+
+@bot.event
 async def on_ready():
-    print(f"✅ Logged in as: {client.user} (ID: {client.user.id})")
-    print(f"   Members intent: {client.intents.members}")
-    print(f"   Guilds: {[g.name for g in client.guilds]}")
+    print("-" * 40)
+    print(f"Logged in as {bot.user}")
+    print(f"ID: {bot.user.id}")
+    print(f"Discord.py: {discord.__version__}")
+    print("-" * 40)
 
-# ── !test ──────────────────────────────────────────────────────────────────
-@client.command()
+    for guild in bot.guilds:
+        print(f"Connected to: {guild.name} ({guild.id})")
+
+
+@bot.event
+async def on_member_join(member):
+    print(f"{member} joined {member.guild.name}")
+
+    try:
+        await send_welcome(member)
+        print(f"Welcome sent to {member}")
+    except Exception as e:
+        print(f"Welcome error: {e}")
+
+
+# ==============================
+# Commands
+# ==============================
+
+@bot.command()
 async def test(ctx):
-    await ctx.send(f"✅ Bot is online! Members intent: `{client.intents.members}`")
+    await ctx.send("✅ Bot is online!")
 
-# ── !welcome ───────────────────────────────────────────────────────────────
-@client.command()
+
+@bot.command()
 async def welcome(ctx):
     try:
-        # Use guild-scoped fetch so permissions are evaluated correctly
-        guild = ctx.guild
-        channel = guild.get_channel(WELCOME_CHANNEL_ID)
-        if channel is None:
-            channel = await guild.fetch_channel(WELCOME_CHANNEL_ID)
-
-        member_count = guild.member_count
-        await channel.send(
-            f"👋 Hi {ctx.author.mention}, welcome to **One More Day**!\n\n"
-            f"You are our **{ordinal(member_count)}** member. 🎉"
-        )
-        await ctx.send("✅ Welcome message sent!")
+        await send_welcome(ctx.author)
+        await ctx.send("✅ Welcome message sent.")
     except discord.Forbidden:
-        await ctx.send(
-            "❌ Still getting Forbidden. Fix: Give the bot the **Administrator** permission in your server settings, then try again."
-        )
-        print("Forbidden error in !welcome")
+        await ctx.send("❌ I don't have permission to send messages there.")
     except discord.NotFound:
-        await ctx.send(f"❌ Channel `{WELCOME_CHANNEL_ID}` not found in this server.")
+        await ctx.send("❌ Welcome channel not found.")
     except Exception as e:
-        await ctx.send(f"❌ Error: {e}")
-        print(f"Error in !welcome: {e}")
+        await ctx.send(f"❌ {e}")
 
-# ── on_member_join ─────────────────────────────────────────────────────────
-@client.event
-async def on_member_join(member):
-    print(f"👤 {member} joined {member.guild.name}")
-    try:
-        guild = member.guild
-        channel = guild.get_channel(WELCOME_CHANNEL_ID)
-        if channel is None:
-            channel = await guild.fetch_channel(WELCOME_CHANNEL_ID)
 
-        member_count = guild.member_count
-        await channel.send(
-            f"👋 Hi {member.mention}, welcome to **One More Day**!\n\n"
-            f"You are our **{ordinal(member_count)}** member. 🎉"
-        )
-        print(f"✅ Welcomed {member} as the {ordinal(member_count)} member.")
-    except Exception as e:
-        print(f"❌ Error welcoming {member}: {e}")
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def ping(ctx):
+    await ctx.send(f"🏓 Pong! `{round(bot.latency * 1000)}ms`")
 
-# ── Main ───────────────────────────────────────────────────────────────────
-async def main():
-    token = os.environ.get("DISCORD_BOT_TOKEN")
-    if not token:
-        raise ValueError("DISCORD_BOT_TOKEN is not set!")
-    start_keep_alive()
-    while True:
-        try:
-            async with client:
-                await client.start(token)
-        except discord.errors.LoginFailure:
-            print("❌ Invalid token — check DISCORD_BOT_TOKEN.")
-            break
-        except Exception as e:
-            print(f"⚠️ Crashed: {e} — reconnecting in 5s...")
-            await asyncio.sleep(5)
 
-asyncio.run(main())
+# ==============================
+# Main
+# ==============================
+
+def main():
+    token = os.getenv("DISCORD_BOT_TOKEN")
+
+    if token is None:
+        raise RuntimeError("DISCORD_BOT_TOKEN environment variable is missing.")
+
+    keep_alive()
+    bot.run(token)
+
+
+if __name__ == "__main__":
+    main()
