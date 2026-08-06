@@ -31,7 +31,7 @@ intents.members = True
 
 client = commands.Bot(command_prefix="!", intents=intents)
 
-WELCOME_CHANNEL_ID = 1529217305756827649
+WELCOME_CHANNEL_ID = 1534907292720435401
 
 # ── Ordinal helper: 1 → "1st", 26 → "26th" ─────────────────────────────────
 def ordinal(n):
