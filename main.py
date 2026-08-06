@@ -28,7 +28,7 @@ intents.message_content = True
 
 client = commands.Bot(command_prefix="!", intents=intents)
 
-WELCOME_CHANNEL_ID = 1529217305756827649
+WELCOME_CHANNEL_ID = 1534907292720435401
 
 def ordinal(n):
     if 10 <= n % 100 <= 20:
