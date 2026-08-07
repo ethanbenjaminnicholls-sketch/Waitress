@@ -18,6 +18,14 @@ class WelcomeBot(discord.Client):
 
     async def on_ready(self):
         print(f"Online: {self.user}")
+        print(f"Bot is in these servers:")
+        for guild in self.guilds:
+            print(f"  - {guild.name} (ID: {guild.id})")
+            channel = guild.get_channel(WELCOME_CHANNEL_ID)
+            if channel:
+                print(f"    ✅ Found welcome channel: #{channel.name}")
+            else:
+                print(f"    ❌ Welcome channel NOT found in this server")
 
     async def on_member_join(self, member):
         print(f"Joined: {member}")
@@ -40,7 +48,6 @@ async def run_web():
     await runner.setup()
     site = web.TCPSite(runner, "0.0.0.0", int(os.environ.get("PORT", 3000)))
     await site.start()
-    print(f"Web server on port {os.environ.get('PORT', 3000)}")
 
 async def main():
     token = os.environ.get("DISCORD_BOT_TOKEN")
