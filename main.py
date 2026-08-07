@@ -17,25 +17,29 @@ class WelcomeBot(discord.Client):
         super().__init__(intents=intents)
 
     async def on_ready(self):
-        print(f"Online: {self.user}")
-        print(f"Bot is in these servers:")
+        print(f"=== BOT ONLINE: {self.user} ===")
         for guild in self.guilds:
-            print(f"  - {guild.name} (ID: {guild.id})")
-            channel = guild.get_channel(WELCOME_CHANNEL_ID)
-            if channel:
-                print(f"    ✅ Found welcome channel: #{channel.name}")
-            else:
-                print(f"    ❌ Welcome channel NOT found in this server")
+            ch = guild.get_channel(WELCOME_CHANNEL_ID)
+            print(f"Server: '{guild.name}' | Welcome channel found: {'YES - #' + ch.name if ch else 'NO'}")
 
     async def on_member_join(self, member):
-        print(f"Joined: {member}")
+        guild = member.guild
+        print(f"=== MEMBER JOINED ===")
+        print(f"User: {member}")
+        print(f"Server they joined: {guild.name} (ID: {guild.id})")
+        channel = guild.get_channel(WELCOME_CHANNEL_ID)
+        if not channel:
+            print(f"Channel {WELCOME_CHANNEL_ID} NOT in server '{guild.name}' — cannot send welcome")
+            return
+        print(f"Channel found: #{channel.name}")
         try:
-            channel = member.guild.get_channel(WELCOME_CHANNEL_ID) \
-                      or await member.guild.fetch_channel(WELCOME_CHANNEL_ID)
             await channel.send(
                 f"👋 Hi {member.mention}, welcome to **One More Day**!\n\n"
-                f"You are our **{ordinal(member.guild.member_count)}** member. 🎉"
+                f"You are our **{ordinal(guild.member_count)}** member. 🎉"
             )
+            print(f"Welcome sent!")
+        except discord.Forbidden:
+            print(f"FORBIDDEN — bot lacks permission to post in #{channel.name}")
         except Exception as e:
             print(f"Error: {e}")
 
